@@ -3,50 +3,12 @@ import sys
 from pathlib import Path
 
 extensions = [
-    '.c',        # C
-    '.cpp',      # C++
-    '.cc',       # C++
-    '.cxx',      # C++
-    '.h',        # Header (C/C++)
-    '.hh',       # Header (C++)
-    '.hpp',      # Header (C++)
-    '.hxx',      # Header (C++)
-    '.ino',      # Arduino
-    '.py',       # Python
-    '.pyw',      # Python (Windows GUI)
-    '.java',     # Java
-    '.js',       # JavaScript
-    '.ts',       # TypeScript
-    '.tsx',      # TypeScript with JSX
-    '.jsx',      # JavaScript with JSX
-    '.rb',       # Ruby
-    '.go',       # Go
-    '.rs',       # Rust
-    '.swift',    # Swift
-    '.kt',       # Kotlin
-    '.kts',      # Kotlin Script
-    '.cs',       # C#
-    '.php',      # PHP
-    '.html',     # HTML
-    '.htm',      # HTML
-    '.css',      # CSS
-    '.scss',     # SASS
-    '.sass',     # SASS
-    '.lua',      # Lua
-    '.sh',       # Shell Script
-    '.bat',      # Batch
-    '.ps1',      # PowerShell
-    '.sql',      # SQL
-    '.r',        # R
-    '.m',        # MATLAB / Objective-C
-    '.asm',      # Assembly
-    '.s',        # Assembly
-    '.json',     # JSON
-    '.xml',      # XML
-    '.yml',      # YAML
-    '.yaml',     # YAML
-    '.toml',     # TOML
-    '.ini',      
+    '.c', '.cpp', '.cc', '.cxx', '.h', '.hh', '.hpp', '.hxx', '.ino',
+    '.py', '.pyw', '.java', '.js', '.ts', '.tsx', '.jsx', '.rb',
+    '.go', '.rs', '.swift', '.kt', '.kts', '.cs', '.php',
+    '.html', '.htm', '.css', '.scss', '.sass', '.lua', '.sh',
+    '.bat', '.ps1', '.sql', '.r', '.m', '.asm', '.s',
+    '.json', '.xml', '.yml', '.yaml', '.toml', '.ini',
 ]
 output_file = 'output.txt'
 
@@ -60,9 +22,16 @@ def read_file_with_fallback(file_path):
             print(f"Failed to read {file_path.name}: {e}")
             return None
 
+
 def main():
     current_dir = Path('.')
-    files = [f for f in current_dir.iterdir() if f.is_file() and f.suffix in extensions]
+    script_file = Path(__file__).resolve()
+    files = [
+        f for f in current_dir.iterdir()
+        if f.is_file()
+        and f.suffix in extensions
+        and f.resolve() != script_file
+    ]
 
     if not files:
         print(f"No files with extensions {extensions} found in {current_dir.resolve()}. Exiting.")
@@ -79,6 +48,7 @@ def main():
             out.write('\n\n')
 
     print(f"Generated {output_file} with {len(files)} files.")
+
 
 if __name__ == '__main__':
     main()
