@@ -1,16 +1,26 @@
 #!/usr/bin/env python3
 import sys
+import os
+import platform
+import subprocess
 from pathlib import Path
 
-extensions = [
+EXTENSIONS = [
     '.c', '.cpp', '.cc', '.cxx', '.h', '.hh', '.hpp', '.hxx', '.ino',
     '.py', '.pyw', '.java', '.js', '.ts', '.tsx', '.jsx', '.rb',
     '.go', '.rs', '.swift', '.kt', '.kts', '.cs', '.php',
     '.html', '.htm', '.css', '.scss', '.sass', '.lua', '.sh',
     '.bat', '.ps1', '.sql', '.r', '.m', '.asm', '.s',
-    '.json', '.xml', '.yml', '.yaml', '.toml', '.ini',
+    '.xml', '.yml', '.yaml', '.toml', '.ini',
+    '.md',
 ]
-output_file = 'code2text_output.txt'
+OUTPUT_FILE = 'code2text_output.txt'
+
+IGNORE_ITEMS = {
+    '.git', '.vscode', '.idea', 'node_modules', 'venv',
+    '__pycache__', '.pytest_cache', 'build', 'dist',
+    'target', '.DS_Store',
+}
 
 def read_file_with_fallback(file_path: Path):
     try:
@@ -21,56 +31,134 @@ def read_file_with_fallback(file_path: Path):
         except Exception as e:
             print(f"Failed to read {file_path}: {e}")
             return None
+    except Exception as e:
+        print(f"Failed to read {file_path}: {e}")
+        return None
+
+def generate_tree(dir_path: Path, script_file: Path, output_path: Path, prefix: str = ''):
+    tree_lines = []
+    try:
+        items = list(dir_path.iterdir())
+    except PermissionError:
+        return []
+
+    valid_items = []
+    for item in items:
+        if item.name in IGNORE_ITEMS:
+            continue
+        if item.resolve() == script_file or item.resolve() == output_path:
+            continue
+        valid_items.append(item)
+    
+    valid_items.sort(key=lambda x: (x.is_file(), x.name.lower()))
+
+    for i, path in enumerate(valid_items):
+        is_last = (i == len(valid_items) - 1)
+        connector = '└── ' if is_last else '├── '
+        tree_lines.append(f"{prefix}{connector}{path.name}")
+
+        if path.is_dir():
+            new_prefix = prefix + ('    ' if is_last else '│   ')
+            tree_lines.extend(generate_tree(path, script_file, output_path, new_prefix))
+    return tree_lines
+
+def find_files(current_dir: Path, script_file: Path, output_path: Path):
+    files_list = []
+    for item in current_dir.iterdir():
+        if item.name in IGNORE_ITEMS:
+            continue
+        if item.resolve() == script_file or item.resolve() == output_path:
+            continue
+        
+        if item.is_dir():
+            files_list.extend(find_files(item, script_file, output_path))
+        elif item.is_file():
+            if item.suffix.lower() in EXTENSIONS or item.name.lower() == 'requirements.txt':
+                files_list.append(item)
+    return files_list
+
+def open_output_file(file_path: Path):
+    system = platform.system()
+    try:
+        if system == 'Windows':
+            os.startfile(file_path.resolve())
+        elif system == 'Darwin':
+            subprocess.Popen(['open', file_path.resolve()])
+        else:
+            subprocess.Popen(['xdg-open', file_path.resolve()])
+        print(f"Opening {OUTPUT_FILE} in default editor...")
+    except Exception as e:
+        print(f"Could not open the file automatically. Please open it manually: {file_path.resolve()}")
+        print(f"Error: {e}")
 
 def main():
     current_dir = Path('.').resolve()
     script_file = Path(__file__).resolve()
-    output_path = (current_dir / output_file).resolve()
+    output_path = (current_dir / OUTPUT_FILE).resolve()
+    
+    generate_tree_flag = '--tree' in sys.argv or '-t' in sys.argv
 
-    files = []
-    for f in current_dir.rglob('*'):
-        if not f.is_file():
-            continue
-        try:
-            if f.suffix.lower() not in extensions:
-                continue
-            if f.resolve() == script_file:
-                continue
-            if f.resolve() == output_path:
-                continue
-            files.append(f)
-        except Exception as e:
-            print(f"Exception processing {f}: {e}")
-            continue
-
-    files.sort()
+    try:
+        files = find_files(current_dir, script_file, output_path)
+        files.sort()
+    except Exception as e:
+        print(f"Error finding files: {e}")
+        sys.exit(1)
 
     if not files:
-        print(f"No files with extensions {extensions} found in {current_dir}. Exiting.")
+        print(f"No relevant files found in {current_dir}. Exiting.")
         sys.exit(0)
+        
+    tree_structure = ""
+    if generate_tree_flag:
+        try:
+            tree_lines = generate_tree(current_dir, script_file, output_path)
+            tree_structure = "\n".join(tree_lines)
+        except Exception as e:
+            print(f"Error generating folder tree: {e}")
+            tree_structure = "Error generating folder tree."
 
-    with open(output_file, 'w', encoding='utf-8') as out:
-        out.write('Code:\n\n')
-        for file in files:
-            content = read_file_with_fallback(file)
-            if content is None:
-                continue
-            try:
-                rel_path = file.resolve().relative_to(current_dir)
-            except Exception as e:
-                print(f"Exception resolving path for {file}: {e}")
-                rel_path = file.resolve()
-            try:
-                rel_dir = file.parent.resolve().relative_to(current_dir)
-            except Exception as e:
-                print(f"Exception resolving directory for {file}: {e}")
-                rel_dir = file.parent.resolve()
-            out.write(f"{rel_path}:\n")
-            out.write(f"Directory: {rel_dir}\n\n")
-            out.write(content)
-            out.write('\n\n')
+    try:
+        with open(output_path, 'w', encoding='utf-8') as out:
+            out.write(f"Project: {current_dir.name}\n")
+            out.write("=" * 40 + "\n\n")
+            
+            if generate_tree_flag:
+                out.write("Project Structure:\n")
+                out.write("```\n")
+                out.write(f"{current_dir.name}/\n")
+                out.write(tree_structure)
+                out.write("\n```\n\n")
+                out.write("=" * 40 + "\n")
 
-    print(f"Generated {output_file} with {len(files)} files.")
+            out.write("File Contents:\n")
+            out.write("=" * 40 + "\n\n")
+
+            for file in files:
+                content = read_file_with_fallback(file)
+                if content is None:
+                    continue
+                
+                try:
+                    rel_path = file.resolve().relative_to(current_dir)
+                except ValueError:
+                    rel_path = file.resolve()
+                
+                out.write(f"--- File: {rel_path} ---\n\n")
+                out.write(f"```{file.suffix.lstrip('.')} \n")
+                out.write(content.strip())
+                out.write("\n```\n\n")
+        
+        print_message = f"Generated {output_path.name} with {len(files)} files"
+        if generate_tree_flag:
+            print_message += " and folder structure"
+        print(print_message + ".")
+        
+        open_output_file(output_path)
+
+    except Exception as e:
+        print(f"Error writing output file: {e}")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
