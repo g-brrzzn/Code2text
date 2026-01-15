@@ -17,22 +17,28 @@ EXTENSIONS = [
 OUTPUT_FILE = 'code2text_output.txt'
 
 IGNORE_ITEMS = {
-    '.git', '.vscode', '.idea', 'node_modules', 'venv',
-    '__pycache__', '.pytest_cache', 'build', 'dist',
-    'target', '.DS_Store',
+    '.git', '.vscode', '.idea', 'node_modules', 'venv', '.venv', 'env', '.env',
+    'virtualenv', '__pycache__', '.pytest_cache', 'build', 'dist',
+    'target', '.DS_Store', '.metadata', '.gradle', '.settings',
 }
 
 def read_file_with_fallback(file_path: Path):
-    try:
-        return file_path.read_text(encoding='utf-8')
-    except UnicodeDecodeError:
+    encodings = ['utf-8', 'utf-8-sig', 'utf-16', 'utf-16le', 'utf-16be', 'cp1252', 'latin1']
+    
+    for enc in encodings:
         try:
-            return file_path.read_text(encoding='latin1')
+            return file_path.read_text(encoding=enc)
+        except (UnicodeDecodeError, LookupError):
+            continue
         except Exception as e:
-            print(f"Failed to read {file_path}: {e}")
-            return None
+            print(f"Error reading {file_path} with {enc}: {e}")
+            continue
+
+    try:
+        with open(file_path, 'rb') as f:
+            return f.read().decode('utf-8', errors='ignore')
     except Exception as e:
-        print(f"Failed to read {file_path}: {e}")
+        print(f"Total failure reading {file_path}: {e}")
         return None
 
 def generate_tree(dir_path: Path, script_file: Path, output_path: Path, prefix: str = ''):
@@ -119,7 +125,7 @@ def main():
             tree_structure = "Error generating folder tree."
 
     try:
-        with open(output_path, 'w', encoding='utf-8') as out:
+        with open(output_path, 'w', encoding='utf-8', errors='replace') as out:
             out.write(f"Project: {current_dir.name}\n")
             out.write("=" * 40 + "\n\n")
             
