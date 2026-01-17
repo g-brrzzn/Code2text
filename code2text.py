@@ -12,17 +12,26 @@ EXTENSIONS = [
     '.html', '.htm', '.css', '.scss', '.sass', '.lua', '.sh',
     '.bat', '.ps1', '.sql', '.r', '.m', '.asm', '.s',
     '.xml', '.yml', '.yaml', '.toml', '.ini',
-    '.md',
+    '.md', '.shader', '.cginc', '.hlsl', '.json'
 ]
 OUTPUT_FILE = 'code2text_output.txt'
+MAX_FILE_SIZE = 1024 * 256
 
 IGNORE_ITEMS = {
     '.git', '.vscode', '.idea', 'node_modules', 'venv', '.venv', 'env', '.env',
     'virtualenv', '__pycache__', '.pytest_cache', 'build', 'dist',
     'target', '.DS_Store', '.metadata', '.gradle', '.settings',
+    'Library', 'Temp', 'Logs', 'UserSettings', 'obj', 'Build', 'Builds',
+    'MemoryCaptures', 'Recordings'
 }
 
 def read_file_with_fallback(file_path: Path):
+    try:
+        if file_path.stat().st_size > MAX_FILE_SIZE:
+            return f"File skipped: size ({file_path.stat().st_size} bytes) exceeds limit."
+    except Exception:
+        pass
+
     encodings = ['utf-8', 'utf-8-sig', 'utf-16', 'utf-16le', 'utf-16be', 'cp1252', 'latin1']
     
     for enc in encodings:
@@ -50,7 +59,7 @@ def generate_tree(dir_path: Path, script_file: Path, output_path: Path, prefix: 
 
     valid_items = []
     for item in items:
-        if item.name in IGNORE_ITEMS:
+        if item.name in IGNORE_ITEMS or item.name.endswith('.meta'):
             continue
         if item.resolve() == script_file or item.resolve() == output_path:
             continue
@@ -70,17 +79,20 @@ def generate_tree(dir_path: Path, script_file: Path, output_path: Path, prefix: 
 
 def find_files(current_dir: Path, script_file: Path, output_path: Path):
     files_list = []
-    for item in current_dir.iterdir():
-        if item.name in IGNORE_ITEMS:
-            continue
-        if item.resolve() == script_file or item.resolve() == output_path:
-            continue
-        
-        if item.is_dir():
-            files_list.extend(find_files(item, script_file, output_path))
-        elif item.is_file():
-            if item.suffix.lower() in EXTENSIONS or item.name.lower() == 'requirements.txt':
-                files_list.append(item)
+    try:
+        for item in current_dir.iterdir():
+            if item.name in IGNORE_ITEMS or item.name.endswith('.meta'):
+                continue
+            if item.resolve() == script_file or item.resolve() == output_path:
+                continue
+            
+            if item.is_dir():
+                files_list.extend(find_files(item, script_file, output_path))
+            elif item.is_file():
+                if item.suffix.lower() in EXTENSIONS or item.name.lower() == 'requirements.txt':
+                    files_list.append(item)
+    except PermissionError:
+        pass
     return files_list
 
 def open_output_file(file_path: Path):
