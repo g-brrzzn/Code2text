@@ -22,7 +22,9 @@ IGNORE_ITEMS = {
     'virtualenv', '__pycache__', '.pytest_cache', 'build', 'dist',
     'target', '.DS_Store', '.metadata', '.gradle', '.settings',
     'Library', 'Temp', 'Logs', 'UserSettings', 'obj', 'Build', 'Builds',
-    'MemoryCaptures', 'Recordings'
+    'MemoryCaptures', 'Recordings',
+    'Tiled2Unity', 'ProjectSettings', 'Packages',
+    'packages-lock.json', 'manifest.json', 'package-lock.json', 'yarn.lock'
 }
 
 def read_file_with_fallback(file_path: Path):
@@ -59,7 +61,7 @@ def generate_tree(dir_path: Path, script_file: Path, output_path: Path, prefix: 
 
     valid_items = []
     for item in items:
-        if item.name in IGNORE_ITEMS or item.name.endswith('.meta'):
+        if item.name in IGNORE_ITEMS or item.name.endswith('.meta') or item.name.endswith('.tiled2unity.xml'):
             continue
         if item.resolve() == script_file or item.resolve() == output_path:
             continue
@@ -81,7 +83,7 @@ def find_files(current_dir: Path, script_file: Path, output_path: Path):
     files_list = []
     try:
         for item in current_dir.iterdir():
-            if item.name in IGNORE_ITEMS or item.name.endswith('.meta'):
+            if item.name in IGNORE_ITEMS or item.name.endswith('.meta') or item.name.endswith('.tiled2unity.xml'):
                 continue
             if item.resolve() == script_file or item.resolve() == output_path:
                 continue
