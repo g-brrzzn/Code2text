@@ -18,7 +18,7 @@ OUTPUT_FILE = 'code2text_output.txt'
 MAX_FILE_SIZE = 1024 * 256
 
 IGNORE_ITEMS = {
-    '.git', '.vscode', '.idea', 'node_modules', 'venv', '.venv', 'env', '.env',
+    '.git', '.vscode', '.idea', 'node_modules', 'venv', '.venv', 'env', '.env', '.github',
     'virtualenv', '__pycache__', '.pytest_cache', 'build', 'dist',
     'target', '.DS_Store', '.metadata', '.gradle', '.settings',
     'Library', 'Temp', 'Logs', 'UserSettings', 'obj', 'Build', 'Builds',
