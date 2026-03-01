@@ -24,7 +24,8 @@ IGNORE_ITEMS = {
     'Library', 'Temp', 'Logs', 'UserSettings', 'obj', 'Build', 'Builds',
     'MemoryCaptures', 'Recordings',
     'Tiled2Unity', 'ProjectSettings', 'Packages',
-    'packages-lock.json', 'manifest.json', 'package-lock.json', 'yarn.lock'
+    'packages-lock.json', 'manifest.json', 'package-lock.json', 'yarn.lock', 
+    '.vs', '.config', 'net8.0', 'maps'
 }
 
 def read_file_with_fallback(file_path: Path):
